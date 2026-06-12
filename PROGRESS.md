@@ -23,7 +23,7 @@ Scaffolding produced before any Claude Code session. Your role: push to GitHub, 
   - Acceptance: `git status` clean on `main`, structure matches `REPO_PLAN.md` §4
   - Commit: _
 
-- [ ] **P0-T02** Configure GitHub branch protection on `main`, `stage`, `dev`
+- [x] **P0-T02** Configure GitHub branch protection on `main`, `stage`, `dev`
   - Scope: GitHub web UI
   - Acceptance: PR required on `main` and `stage`; status checks required; linear history
   - Commit: _
