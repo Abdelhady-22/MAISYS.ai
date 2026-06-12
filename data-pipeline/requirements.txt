@@ -10,6 +10,9 @@ PyYAML>=6.0
 
 # MTSamples Kaggle downloader (downloaders/download_mtsamples_kaggle.py)
 kaggle>=1.6
+# HuggingFace downloader (downloaders/download_huggingface_medical.py)
+datasets>=2.19
+huggingface_hub>=0.23
 google-cloud-secret-manager>=2.20
 
 # Tooling (lint / format / type-check / test)
