@@ -8,6 +8,10 @@ structlog>=24.1
 tqdm>=4.66
 PyYAML>=6.0
 
+# MTSamples Kaggle downloader (downloaders/download_mtsamples_kaggle.py)
+kaggle>=1.6
+google-cloud-secret-manager>=2.20
+
 # Tooling (lint / format / type-check / test)
 ruff>=0.5
 black>=24.4
