@@ -8,6 +8,11 @@ structlog>=24.1
 tqdm>=4.66
 PyYAML>=6.0
 
+# HuggingFace downloader (downloaders/download_huggingface_medical.py)
+datasets>=2.19
+huggingface_hub>=0.23
+google-cloud-secret-manager>=2.20
+
 # Tooling (lint / format / type-check / test)
 ruff>=0.5
 black>=24.4
