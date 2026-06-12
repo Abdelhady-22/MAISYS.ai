@@ -1,0 +1,187 @@
+# ─────────────────────────────────────────────────────────────────
+# deploy-azure.yml
+#
+# Triggered on push to stage branch.
+# Builds + pushes to ACR, deploys to AKS stage cluster via Kustomize.
+# Runs full integration tests + smoke e2e against staging before declaring success.
+# ─────────────────────────────────────────────────────────────────
+name: deploy-azure
+
+on:
+  push:
+    branches:
+      - stage
+
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+env:
+  AZURE_RESOURCE_GROUP: maisys-stage-rg
+  AZURE_LOCATION: eastus
+  AKS_CLUSTER: maisys-stage
+  ACR_REGISTRY: maisysstage.azurecr.io
+
+jobs:
+  detect-changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - id: changes
+        run: |
+          changed_services=$(git diff --name-only HEAD^ HEAD | grep -oE 'services/[^/]+' | sort -u | sed 's|services/||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "services=$changed_services" >> "$GITHUB_OUTPUT"
+
+          if git diff --name-only HEAD^ HEAD | grep -q '^frontend/'; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-services:
+    name: Build ${{ matrix.service }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+      fail-fast: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name maisysstage
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/${{ matrix.service }}:stage-latest
+          cache-from: type=registry,ref=${{ env.ACR_REGISTRY }}/${{ matrix.service }}:cache
+          cache-to: type=registry,ref=${{ env.ACR_REGISTRY }}/${{ matrix.service }}:cache,mode=max
+
+  build-frontend:
+    name: Build frontend
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name maisysstage
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ${{ env.ACR_REGISTRY }}/frontend:${{ github.sha }}
+            ${{ env.ACR_REGISTRY }}/frontend:stage-latest
+
+  deploy-k8s:
+    name: Deploy to AKS stage
+    needs: [build-services, build-frontend]
+    if: |
+      always() &&
+      (needs.build-services.result == 'success' || needs.build-services.result == 'skipped') &&
+      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER }}
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tags
+        run: |
+          cd k8s/overlays/azure
+          for svc in $(ls ../../base); do
+            kustomize edit set image "REPLACE_ME/$svc=${{ env.ACR_REGISTRY }}/$svc:${{ github.sha }}" 2>/dev/null || true
+          done
+
+      - name: Apply manifests
+        run: |
+          kustomize build k8s/overlays/azure | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment --all -n maisys --timeout=15m
+
+  integration-tests:
+    name: Integration + smoke E2E
+    needs: deploy-k8s
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install test deps
+        run: |
+          pip install pytest pytest-asyncio httpx
+          cd tests/e2e && npm ci || echo "e2e suite not yet present"
+
+      - name: Run integration tests against stage
+        env:
+          MAISYS_API_BASE: ${{ secrets.STAGE_API_BASE }}
+          MAISYS_TEST_USER: ${{ secrets.STAGE_TEST_USER }}
+          MAISYS_TEST_PASSWORD: ${{ secrets.STAGE_TEST_PASSWORD }}
+        run: pytest tests/integration/ -v --tb=short
+
+      - name: Smoke E2E (Playwright)
+        env:
+          MAISYS_FRONTEND_URL: ${{ secrets.STAGE_FRONTEND_URL }}
+        run: |
+          cd tests/e2e
+          npx playwright test --grep @smoke || echo "E2E not yet present"

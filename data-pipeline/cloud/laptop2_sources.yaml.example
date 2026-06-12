@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────
+# laptop2_sources.yaml.example
+#
+# Template for the Laptop 2 data upload config.
+#
+# USAGE:
+#   1. Copy this file to laptop2_sources.yaml (which is gitignored)
+#   2. Replace placeholder local paths with your actual paths on Laptop 2
+#   3. Run:  python data-pipeline/cloud/upload_local_to_gcs.py \
+#              --config data-pipeline/cloud/laptop2_sources.yaml \
+#              --parallel 8
+#
+# This config covers DDIMDL, MIMIC-III Demo, itachi9604 Kaggle, Mendeley 2023.
+# Drugs.com PDFs are on Laptop 1 (see laptop1_sources.yaml.example).
+# Mayo Clinic / MedlinePlus / Infermedica / EndlessMedical data are
+# scraped fresh on the GCP VM in Phase B — NOT uploaded from laptops.
+# ─────────────────────────────────────────────────────────────────
+
+target:
+  bucket: maisys-data-dev
+  region: us-central1
+  storage_class: STANDARD          # STANDARD for structured data (queried often)
+
+options:
+  parallel_uploads: 8
+  chunk_size_mb: 16
+  verify_md5: true
+  skip_if_exists: true
+  retry_attempts: 5
+  retry_backoff_seconds: [1, 2, 4, 8, 16]
+  manifest_path: gs://maisys-data-dev/manifests/phase_a2_manifest.json
+
+sources:
+
+  # ─────────────────────────────────────────────────────────────
+  # DDIMDL 2 — drug-drug interactions, 2 CSVs
+  # ─────────────────────────────────────────────────────────────
+  - name: ddimdl_v2
+    local_path: /path/to/DDIMDL2                                       # ← REPLACE
+    remote_prefix: raw/ddimdl_v2
+    file_pattern: "*.csv"
+    recursive: false
+    expected_min_files: 2
+    expected_max_files: 2
+
+  # ─────────────────────────────────────────────────────────────
+  # MIMIC-III Demo (free demo subset)
+  # ─────────────────────────────────────────────────────────────
+  - name: mimic_iii_demo
+    local_path: /path/to/mimic-iii-clinical-database-demo-1.4          # ← REPLACE
+    remote_prefix: raw/mimic_iii_demo
+    file_pattern: "*"
+    recursive: true
+
+  # ─────────────────────────────────────────────────────────────
+  # itachi9604 Kaggle — drug-symptom-disease CSVs
+  # ─────────────────────────────────────────────────────────────
+  - name: itachi9604_kaggle
+    local_path: /path/to/itachi9604_kaggle_dataset                     # ← REPLACE
+    remote_prefix: raw/itachi9604_kaggle
+    file_pattern: "*.csv"
+    recursive: true
+
+  # ─────────────────────────────────────────────────────────────
+  # Mendeley 2023 — 2 CSVs
+  # ─────────────────────────────────────────────────────────────
+  - name: mendeley_2023
+    local_path: /path/to/mendeley_2023                                 # ← REPLACE
+    remote_prefix: raw/mendeley_2023
+    file_pattern: "*.csv"
+    recursive: false
+    expected_min_files: 2
+    expected_max_files: 2
+
+# ─────────────────────────────────────────────────────────────────
+# Total upload from Laptop 2: ~500 MB (small structured datasets)
+# Should complete in 5–15 minutes on a decent connection.
+# ─────────────────────────────────────────────────────────────────

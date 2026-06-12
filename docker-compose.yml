@@ -1,0 +1,135 @@
+# ─────────────────────────────────────────────────────────────────
+# MAISYS — Local development docker-compose
+#
+# Brings up infrastructure dependencies for local dev INSIDE a cloud VM.
+# Service containers (auth, drug, etc.) are added per service as they're built.
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  # ════════════════════════════════════════════════════════════════
+  # Postgres — one instance for local dev (production has per-service)
+  # ════════════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: maisys-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-maisys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local_only}
+      POSTGRES_MULTIPLE_DATABASES: auth,chatbot,drug,symptom,lab,research,export,notification,admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maisys}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ════════════════════════════════════════════════════════════════
+  # Redis — cache, pub/sub, rate limiting
+  # ════════════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    container_name: maisys-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ════════════════════════════════════════════════════════════════
+  # Qdrant — vector DB for RAG
+  # ════════════════════════════════════════════════════════════════
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: maisys-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ════════════════════════════════════════════════════════════════
+  # RabbitMQ — async task queue
+  # ════════════════════════════════════════════════════════════════
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: maisys-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ════════════════════════════════════════════════════════════════
+  # MinIO — local S3-compatible storage for testing storage_client
+  # (in production this is GCS/Azure/S3, never local)
+  # ════════════════════════════════════════════════════════════════
+  minio:
+    image: minio/minio:latest
+    container_name: maisys-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ════════════════════════════════════════════════════════════════
+  # Service containers go below — added per service as they're built.
+  # Each service follows the pattern:
+  #
+  # SERVICE-NAME:
+  #   build: ./services/SERVICE-NAME
+  #   environment:
+  #     - DATABASE_URL=postgresql+asyncpg://maisys:changeme@postgres:5432/SERVICE
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - QDRANT_URL=http://qdrant:6333
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #     qdrant: { condition: service_healthy }
+  #   ports:
+  #     - "${SERVICE_PORT}:${SERVICE_PORT}"
+  # ════════════════════════════════════════════════════════════════
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  rabbitmq_data:
+  minio_data:
+
+networks:
+  default:
+    name: maisys-network

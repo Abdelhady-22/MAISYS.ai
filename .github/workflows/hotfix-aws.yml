@@ -1,0 +1,194 @@
+# ─────────────────────────────────────────────────────────────────
+# hotfix-aws.yml
+#
+# Triggered on push to hotfix/* branches.
+# Bypasses normal dev → stage → main pipeline for emergency fixes.
+# Still requires manual approval; still runs critical-path tests.
+# ─────────────────────────────────────────────────────────────────
+name: hotfix-aws
+
+on:
+  push:
+    branches:
+      - 'hotfix/**'
+
+concurrency:
+  group: hotfix-aws-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: maisys-prod
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/maisys
+
+jobs:
+  # ════════════════════════════════════════════════════════════════
+  # Critical-path tests only — faster than full suite
+  # ════════════════════════════════════════════════════════════════
+  critical-tests:
+    name: Critical-path tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install ruff black mypy pytest pytest-asyncio
+
+      - name: Format + lint
+        run: |
+          black --check --line-length=100 .
+          ruff check .
+
+      - name: Critical-path unit tests
+        run: pytest -m "critical" --tb=short
+
+      - name: Safety service tests (always required)
+        run: pytest services/safety-service/tests/ --tb=short
+
+  detect-changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: changes
+        run: |
+          base=$(git merge-base HEAD origin/main)
+          changed_services=$(git diff --name-only "$base" HEAD | grep -oE 'services/[^/]+' | sort -u | sed 's|services/||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "services=$changed_services" >> "$GITHUB_OUTPUT"
+
+  build-services:
+    name: Build ${{ matrix.service }}
+    needs: [critical-tests, detect-changes]
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+      fail-fast: true                # stop everything if one service fails to build
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:hotfix-${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ matrix.service }}:cache
+
+  # ════════════════════════════════════════════════════════════════
+  # MANUAL APPROVAL — required even for hotfixes
+  # ════════════════════════════════════════════════════════════════
+  approve-hotfix:
+    name: Approve hotfix deploy
+    needs: build-services
+    runs-on: ubuntu-latest
+    environment:
+      name: hotfix-production
+    steps:
+      - name: Approval gate
+        run: |
+          echo "Hotfix approved for production deploy"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+
+  deploy:
+    name: Deploy hotfix to EKS prod
+    needs: approve-hotfix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Targeted image update (changed services only)
+        run: |
+          cd k8s/overlays/aws
+          services='${{ needs.detect-changes.outputs.services }}'
+          echo "$services" | jq -r '.[]' | while read svc; do
+            kustomize edit set image "REPLACE_ME/$svc=${{ env.ECR_REGISTRY }}/$svc:hotfix-${{ github.sha }}"
+          done
+
+      - name: Apply
+        run: |
+          kustomize build k8s/overlays/aws | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment --all -n maisys --timeout=10m
+
+      - name: Verify
+        run: |
+          for i in {1..15}; do
+            if curl -sf "${{ secrets.PROD_API_BASE }}/healthz"; then
+              echo "Hotfix verified"
+              exit 0
+            fi
+            sleep 8
+          done
+          exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          kubectl rollout undo deployment --all -n maisys
+          echo "::error::Hotfix failed and was rolled back"
+
+  # ════════════════════════════════════════════════════════════════
+  # After successful hotfix, open PR to merge back into main + stage + dev
+  # ════════════════════════════════════════════════════════════════
+  backport:
+    name: Open backport PRs
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open PR to main
+        run: |
+          gh pr create \
+            --base main \
+            --head ${{ github.ref_name }} \
+            --title "Backport hotfix to main" \
+            --body "Auto-generated backport of hotfix branch ${{ github.ref_name }}." \
+            || echo "Backport PR to main already exists"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

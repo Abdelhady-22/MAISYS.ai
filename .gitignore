@@ -1,0 +1,212 @@
+# ─────────────────────────────────────────────────────────────────
+# MAISYS .gitignore — Strict no-data, no-secrets policy
+# ─────────────────────────────────────────────────────────────────
+
+# ═════════════════════════════════════════════════════════════════
+# DATA FILES — Never in repo. They live in cloud buckets.
+# ═════════════════════════════════════════════════════════════════
+*.pdf
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.db
+*.sqlite
+*.sqlite3
+*.h5
+*.npy
+*.npz
+*.pkl
+*.pickle
+
+# Data directories
+/data/
+/datasets/
+/embeddings/
+/cache/
+/raw/
+/processed/
+
+# ═════════════════════════════════════════════════════════════════
+# MODEL WEIGHTS — Cloud storage only
+# ═════════════════════════════════════════════════════════════════
+*.safetensors
+*.bin
+*.gguf
+*.ckpt
+*.pt
+*.pth
+/models/
+/checkpoints/
+/lora_adapters/
+
+# ═════════════════════════════════════════════════════════════════
+# SECRETS — Cloud Secret Manager / Key Vault / Secrets Manager only
+# ═════════════════════════════════════════════════════════════════
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.json.key
+service-account*.json
+gcp-credentials*.json
+azure-credentials*.json
+aws-credentials*.json
+kaggle.json
+hf_token
+.kaggle/
+.aws/
+.azure/
+gcloud-credentials*
+
+# Per-laptop config (these contain local paths, not committed)
+data-pipeline/cloud/laptop1_sources.yaml
+data-pipeline/cloud/laptop2_sources.yaml
+
+# ═════════════════════════════════════════════════════════════════
+# Python
+# ═════════════════════════════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ═════════════════════════════════════════════════════════════════
+# Node / Frontend
+# ═════════════════════════════════════════════════════════════════
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+.nuxt/
+.parcel-cache/
+.cache/
+.vite/
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+
+# ═════════════════════════════════════════════════════════════════
+# Terraform
+# ═════════════════════════════════════════════════════════════════
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+*.tfplan
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ═════════════════════════════════════════════════════════════════
+# Docker
+# ═════════════════════════════════════════════════════════════════
+docker-compose.override.yml
+.dockerignore.local
+
+# ═════════════════════════════════════════════════════════════════
+# IDEs and editors
+# ═════════════════════════════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+
+# ═════════════════════════════════════════════════════════════════
+# Logs
+# ═════════════════════════════════════════════════════════════════
+*.log
+logs/
+*.log.*
+
+# ═════════════════════════════════════════════════════════════════
+# OS-specific
+# ═════════════════════════════════════════════════════════════════
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ═════════════════════════════════════════════════════════════════
+# Misc
+# ═════════════════════════════════════════════════════════════════
+*.bak
+*.backup
+*.tmp
+tmp/
+temp/
+YOUR_ROLE.md
