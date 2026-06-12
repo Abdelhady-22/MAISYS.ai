@@ -18,7 +18,7 @@
 
 Scaffolding produced before any Claude Code session. Your role: push to GitHub, configure protection, create branches.
 
-- [ ] **P0-T01** Push Stage A scaffolding to `MAISYS.ai` on `main` branch
+- [x] **P0-T01** Push Stage A scaffolding to `MAISYS.ai` on `main` branch
   - Scope: entire repo root
   - Acceptance: `git status` clean on `main`, structure matches `REPO_PLAN.md` §4
   - Commit: _

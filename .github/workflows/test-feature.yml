@@ -76,7 +76,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # Enable npm caching only once a lockfile exists; otherwise the cache
+          # step hard-fails ("paths were not resolved") before the npm-not-yet-
+          # initialized guard below can run.
+          cache: ${{ hashFiles('frontend/package-lock.json') != '' && 'npm' || '' }}
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -130,10 +133,12 @@ jobs:
 
       - name: Check commit messages
         run: |
-          # Get all commits in this PR
+          # Get all commits in this PR. Exclude merge commits: on a
+          # pull_request event the checkout is a synthetic merge commit whose
+          # subject ("Merge <sha> into <sha>") is not Conventional Commits.
           base="${{ github.base_ref }}"
           git fetch origin "$base"
-          commits=$(git log --format="%s" "origin/$base..HEAD")
+          commits=$(git log --no-merges --format="%s" "origin/$base..HEAD")
 
           fail=0
           while IFS= read -r msg; do

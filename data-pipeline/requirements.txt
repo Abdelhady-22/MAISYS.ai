@@ -1,0 +1,16 @@
+# MAISYS data-pipeline dependencies.
+# Pins are lower-bounds on the majors validated during development.
+
+# Cloud upload bridge (cloud/upload_local_to_gcs.py)
+google-cloud-storage>=2.16,<4
+pydantic>=2.7,<3
+structlog>=24.1
+tqdm>=4.66
+PyYAML>=6.0
+
+# Tooling (lint / format / type-check / test)
+ruff>=0.5
+black>=24.4
+mypy>=1.10
+types-PyYAML>=6.0
+pytest>=8.2

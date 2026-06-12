@@ -1,0 +1,5 @@
+# Aggregated dev/test dependencies installed by CI (.github/workflows/test-feature.yml).
+# Each component lists its own runtime + tooling deps; this file pulls them in so a
+# single `pip install -r requirements-dev.txt` at the repo root covers the whole suite.
+
+-r data-pipeline/requirements.txt
