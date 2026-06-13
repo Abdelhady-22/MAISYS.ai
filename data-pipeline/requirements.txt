@@ -15,6 +15,12 @@ datasets>=2.19
 huggingface_hub>=0.23
 google-cloud-secret-manager>=2.20
 
+# Mayo Clinic scrapers (scrapers/mayo_clinic/) — Playwright + stealth + bs4.
+# NOTE: the Phase B VM must also run `playwright install chromium` (+ install-deps).
+playwright>=1.44
+playwright-stealth>=1.0.6
+beautifulsoup4>=4.12
+
 # Tooling (lint / format / type-check / test)
 ruff>=0.5
 black>=24.4
