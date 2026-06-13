@@ -15,6 +15,10 @@ datasets>=2.19
 huggingface_hub>=0.23
 google-cloud-secret-manager>=2.20
 
+# Cross-cloud sync (cloud/sync_gcs_to_azure.py)
+azure-storage-blob>=12.20
+azure-identity>=1.16
+
 # Mayo Clinic scrapers (scrapers/mayo_clinic/) — Playwright + stealth + bs4.
 # NOTE: the Phase B VM must also run `playwright install chromium` (+ install-deps).
 playwright>=1.44
