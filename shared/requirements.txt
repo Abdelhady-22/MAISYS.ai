@@ -16,3 +16,9 @@ aiosqlite>=0.20,<1.0        # SQLite async driver, used by tests and local dev
 
 # Auth (P1-T20)
 python-jose[cryptography]>=3.3,<4.0
+
+# Storage adapter (P1-T21) — async multi-cloud GCS / Azure Blob / S3
+google-cloud-storage>=2.14,<3.0
+azure-storage-blob>=12.19,<13.0
+azure-identity>=1.15,<2.0
+aioboto3>=12.3,<14.0
