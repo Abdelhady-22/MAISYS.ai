@@ -1,7 +1,15 @@
 # Runtime dependencies for the MAISYS shared library.
-# Test-only dependencies (pytest, httpx for TestClient) come from the repo-root
-# dev requirements / pyproject.toml.
+# Test-only deps (pytest, pytest-asyncio, httpx for TestClient) are configured
+# at the repo root (pyproject.toml or dev requirements).
 
+# Validation & API
 pydantic>=2.6,<3.0
 fastapi>=0.110,<1.0
+
+# Logging
 structlog>=24.1,<25.0
+
+# Database (P1-T19)
+sqlalchemy[asyncio]>=2.0,<3.0
+asyncpg>=0.29,<1.0          # PostgreSQL async driver, production
+aiosqlite>=0.20,<1.0        # SQLite async driver, used by tests and local dev
