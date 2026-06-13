@@ -1,0 +1,7 @@
+# Runtime dependencies for the MAISYS shared library.
+# Test-only dependencies (pytest, httpx for TestClient) come from the repo-root
+# dev requirements / pyproject.toml.
+
+pydantic>=2.6,<3.0
+fastapi>=0.110,<1.0
+structlog>=24.1,<25.0
