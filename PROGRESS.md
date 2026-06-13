@@ -193,10 +193,10 @@ The hands-on phase. One-time uploads from your two laptops, then everything move
   - Required reading: `docs/technical-guides/part2.md` §3
   - Commit: _
 
-- [ ] **P1-T21** Implement `shared/storage/` (multi-cloud GCS/Blob/S3 adapter)
+- [x] **P1-T21** Implement `shared/storage/` (multi-cloud GCS/Blob/S3 adapter)
   - Scope: unified `StorageClient` with `read_bytes`, `write_bytes`, `list_prefix`, `exists`, `delete`
   - Acceptance: same interface across all three providers, all tests pass
-  - Commit: _
+  - Commit: <fill-in-after-squash-merge>
 
 ### 1F — auth-service end-to-end
 
@@ -369,4 +369,4 @@ _(empty — fill in as decisions are made)_
 
 | Date | Task | Question | Decision | Decided by |
 |---|---|---|---|---|
-| | | | | |
+| 2026-06-14 | P1-T21 | Required-reading list pointed to a "storage section in `docs/technical-guides/part2.md`", but part2.md (15 sections) covers only data sources / scrapers / chunking / RAG / Qdrant — no `shared/storage` adapter section exists. | Implemented per `/shared/CLAUDE.md` (module description) and the in-task spec directly. Follow-up doc PR needed: either add a storage adapter section to part2.md, or correct the required-reading list to point to a different source. | Claude (Salma to confirm) |
