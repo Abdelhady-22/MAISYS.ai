@@ -53,10 +53,15 @@ class APIResponse(BaseModel, Generic[T]):
         """Construct a successful response."""
         return cls(success=True, data=data, error=None, metadata=metadata or {})
 
-    @classmethod
-    def error_from_exception(cls, exc: MaisysException) -> APIResponse[None]:
-        """Construct an error response from a MaisysException."""
-        return cls(
+    @staticmethod
+    def error_from_exception(exc: MaisysException) -> APIResponse[None]:
+        """Construct an error response from a MaisysException.
+
+        This is a staticmethod rather than classmethod because the resulting
+        response is always APIResponse[None] regardless of the T the caller
+        parameterized — there is no `data` payload on errors.
+        """
+        return APIResponse[None](
             success=False,
             data=None,
             error=ErrorDetail(
