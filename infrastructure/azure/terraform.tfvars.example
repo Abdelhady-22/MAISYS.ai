@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars and fill in real values. terraform.tfvars is in .gitignore.
+
+subscription_id    = "02287a2b-5c68-4aa1-a851-a58b52b05ccf"
+tenant_id          = "201c5a81-5e83-4e81-90f1-b61a45057f87"
+location           = "eastus"
+env                = "stage"
+github_repo        = "your-org/MAISYS.ai"
+github_branch      = "stage"
+
+# Your Azure AD object ID. Find with:
+#   az ad signed-in-user show --query id -o tsv
+operator_object_id = "REPLACE_WITH_YOUR_AZURE_AD_OBJECT_ID"
+
+# Optional: override the data plane defaults if you renamed them.
+# data_storage_account_name = "maisysstage"
+# data_container_name       = "maisys-data-stage"
