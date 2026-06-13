@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and fill in real values. terraform.tfvars is in .gitignore.
+
+region        = "us-east-1"
+env           = "prod"
+github_repo   = "your-org/MAISYS.ai"
+github_branch = "main"
+
+# k8s_namespace for IRSA-bound ServiceAccounts. Default 'maisys'.
+# k8s_namespace = "maisys"
+
+# Override the default service list ONLY if a service is added or renamed.
+# services = [...]
+
+# Override the default secret-shell list to add/remove secrets BEFORE first
+# apply. Adding a secret later requires a fresh `terraform apply`; the value
+# is then populated with:
+#   aws secretsmanager put-secret-value --secret-id <name> --secret-string '<value>'
+# secret_names = [...]
