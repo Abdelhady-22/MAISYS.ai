@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars and fill in real values. terraform.tfvars is in .gitignore.
+
+project_id  = "maisys-dev"
+region      = "us-central1"
+zone        = "us-central1-a"
+env         = "dev"
+github_repo = "your-org/MAISYS.ai"
