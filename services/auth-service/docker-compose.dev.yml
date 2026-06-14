@@ -1,0 +1,70 @@
+# Standalone dev compose for auth-service.
+#
+# Run from the MAISYS repo root:
+#
+#     docker compose -f services/auth-service/docker-compose.dev.yml up --build
+#
+# This brings up Postgres + auth-service together. For production deployment,
+# integrate the `auth-service` block below into the root docker-compose.yml
+# (see DOCKER.md for the merge snippet).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: maisys
+      POSTGRES_PASSWORD: maisys-dev
+      POSTGRES_DB: maisys_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maisys -d maisys_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  auth-migrate:
+    build:
+      # Context is the repo root (one level up from this file) so the
+      # Dockerfile can `COPY shared`.
+      context: ../..
+      dockerfile: services/auth-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://maisys:maisys-dev@postgres:5432/maisys_auth
+    # One-shot migration runner: applies Alembic migrations, then exits.
+    command: ["sh", "-c", "alembic upgrade head"]
+    restart: "no"
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: services/auth-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: DEBUG
+      DATABASE_URL: postgresql+asyncpg://maisys:maisys-dev@postgres:5432/maisys_auth
+      JWT_SECRET: dev-only-change-me-in-production
+      JWT_ISSUER: maisys
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "30"
+      CORS_ORIGINS: "*"
+      # OAuth: set real client IDs to exercise google/apple callbacks.
+      GOOGLE_OAUTH_CLIENT_ID: ""
+      APPLE_OAUTH_CLIENT_ID: ""
+      # Rate limiting is on by default; bump the default in dev.
+      RATE_LIMIT_DEFAULT: "1000/minute"
+    ports:
+      - "8001:8000"
+
+volumes:
+  auth_pg_data:
