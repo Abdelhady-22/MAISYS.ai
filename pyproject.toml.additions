@@ -1,5 +1,12 @@
-# Add to pyproject.toml's [tool.ruff.lint.per-file-ignores] section
-# (the sys.path setup before imports in test files is intentional)
+# Add these to pyproject.toml after PR1 lands.
+# (a) ruff: ignore E402 in drug-service tests where sys.path setup must precede imports
+# (b) pytest: importlib mode so the hyphen in "drug-service" doesn't break package discovery
+
 [tool.ruff.lint.per-file-ignores]
-"data-pipeline/tests/**/*.py" = ["E402"]
-"shared/tests/**/*.py" = ["E402"]
+"services/drug-service/tests/**/*.py" = ["E402"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["shared/tests", "data-pipeline/tests", "services/drug-service/tests"]
+addopts = "--import-mode=importlib"
