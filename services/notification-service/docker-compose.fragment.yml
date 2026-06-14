@@ -1,0 +1,40 @@
+# notification-service entry for docker-compose.yml
+#
+# ADD this block under the `services:` mapping in docker-compose.yml.
+# Do NOT modify any other service entries.
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: maisys-notification-service
+    restart: unless-stopped
+    ports:
+      - "8009:8009"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+
+      # Database — owns maisys_notification_db. Alembic runs at startup.
+      DATABASE_URL: postgresql+asyncpg://maisys:${POSTGRES_PASSWORD}@postgres:5432/maisys_notification_db
+
+      # Email — SendGrid is the only provider in v1 (SMTP fallback deferred).
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@maisys.io}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request, sys; r=urllib.request.urlopen('http://localhost:8009/readyz', timeout=3); sys.exit(0 if r.status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - maisys-net
