@@ -1,0 +1,43 @@
+# drug-service entry for docker-compose.yml
+#
+# Per the PR2 brief: ADD this entry to the existing docker-compose.yml.
+# Do NOT modify any other service entries. The full file is owned by P1-T23.
+#
+# Add this block under the `services:` mapping (alongside auth-service):
+
+  drug-service:
+    build:
+      context: .
+      dockerfile: services/drug-service/Dockerfile
+    container_name: maisys-drug-service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+asyncpg://maisys:${POSTGRES_PASSWORD}@postgres:5432/drug
+      DDIMDL_DATABASE_URL: postgresql+asyncpg://maisys:${POSTGRES_PASSWORD}@postgres:5432/ddimdl
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379/2
+      SAFETY_SERVICE_URL: http://safety-service:8003
+      SAFETY_SERVICE_ENABLED: ${SAFETY_SERVICE_ENABLED:-true}
+      JWT_SECRET: ${JWT_SECRET}
+      DRUG_SERVICE_LLM_MODEL: ${DRUG_SERVICE_LLM_MODEL:-openai/gpt-4o-mini}
+      WEB_SEARCH_ENABLED: ${WEB_SEARCH_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; r=urllib.request.urlopen('http://localhost:8002/readyz', timeout=3); sys.exit(0 if r.status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - maisys-net
