@@ -59,7 +59,8 @@ async def test_openapi_lists_every_agent_endpoint(client: AsyncClient) -> None:
 @pytest.mark.parametrize(
     "path,payload",
     [
-        ("/drugs/lookup", {"drug": {"name": "ibuprofen"}, "language": "en"}),
+        # /drugs/lookup is wired to the real LookupAgent from commit 4; in the
+        # test app we don't register it, so the route returns 503 instead of 501.
         (
             "/drugs/interactions",
             {"drugs": [{"name": "ibuprofen"}, {"name": "warfarin"}], "language": "en"},
@@ -84,12 +85,24 @@ async def test_openapi_lists_every_agent_endpoint(client: AsyncClient) -> None:
 async def test_agent_endpoints_return_501_stub(
     client: AsyncClient, path: str, payload: dict
 ) -> None:
-    """Every agent endpoint is a stub until its commit lands."""
+    """Each agent endpoint is a stub until its commit lands."""
     resp = await client.post(path, json=payload)
     assert resp.status_code == 501, f"{path} returned {resp.status_code}, expected 501"
     body = resp.json()
     detail = body.get("detail", {})
     assert detail.get("code") == "AGENT_NOT_IMPLEMENTED"
+
+
+@pytest.mark.asyncio
+async def test_lookup_returns_503_when_agent_not_registered(client: AsyncClient) -> None:
+    """The lookup route is wired to default_registry; without a registered
+    LookupAgent (commit 12 wires it at startup) the route returns 503."""
+    resp = await client.post(
+        "/drugs/lookup", json={"drug": {"name": "ibuprofen"}, "language": "en"}
+    )
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body.get("detail", {}).get("code") == "AGENT_NOT_REGISTERED"
 
 
 @pytest.mark.asyncio

@@ -45,6 +45,7 @@ from services.drug_service.models.schemas import (
     Citation,
     Language,
 )
+from shared.error_handler import MaisysException
 from shared.logger import get_logger
 from shared.progress import ProgressEvent, ProgressPublisher
 
@@ -220,7 +221,10 @@ class BaseAgent(ABC, Generic[RequestT, DataT]):
         except AgentLowConfidenceException:
             await self._publish_failed(context, "low_confidence")
             raise
-        except AgentExecutionFailure:
+        except MaisysException:
+            # Any typed MaisysException (DrugNotFound, RxNormAPI, etc.)
+            # passes through — the global FastAPI handler translates
+            # them into APIResponse envelopes with the right status code.
             await self._publish_failed(context, "execution_failure")
             raise
         except Exception as exc:

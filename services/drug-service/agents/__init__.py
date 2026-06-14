@@ -1,8 +1,8 @@
-"""Agent framework — BaseAgent ABC, per-request context, and registry.
+"""Agent framework + concrete agents.
 
-The 8 concrete agents (Lookup, Interaction, Dosage, Comparison,
-Pharmacokinetics, Alternative, Web Search, Acquisition) are added in
-commits 4-11 and register themselves with ``default_registry``.
+The base class and registry come from ``base``. Concrete agents (one
+per commit 4-11) register themselves with ``default_registry`` at
+import time.
 """
 
 from services.drug_service.agents.base import (
@@ -16,6 +16,7 @@ from services.drug_service.agents.base import (
     BaseAgent,
     default_registry,
 )
+from services.drug_service.agents.lookup import LookupAgent
 
 __all__ = [
     "AgentContext",
@@ -26,5 +27,6 @@ __all__ = [
     "DOSAGE_DISCLAIMER",
     "GENERIC_DISCLAIMER",
     "INTERACTION_DISCLAIMER",
+    "LookupAgent",
     "default_registry",
 ]
