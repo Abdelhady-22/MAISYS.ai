@@ -1,0 +1,123 @@
+[
+  {
+    "id": "e2e-en-01-lookup",
+    "language": "en",
+    "intent": "lookup",
+    "text": "What is ibuprofen and what is it used for?",
+    "expected": {
+      "primary_agent": "lookup",
+      "visual_type": "card",
+      "min_citations": 1,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-en-02-interaction",
+    "language": "en",
+    "intent": "interaction",
+    "text": "Is it safe to take aspirin and warfarin together?",
+    "expected": {
+      "primary_agent": "interaction",
+      "visual_type": "severity_bar",
+      "min_pairs": 1,
+      "min_confidence": 0.7,
+      "overall_severity_at_least": "moderate"
+    }
+  },
+  {
+    "id": "e2e-en-03-dosage",
+    "language": "en",
+    "intent": "dosage",
+    "text": "How much metformin should a 65 year old patient with mild renal impairment take?",
+    "expected": {
+      "primary_agent": "dosage",
+      "visual_type": "dosing_flowchart",
+      "min_regimens": 1,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-en-04-pharmacokinetics",
+    "language": "en",
+    "intent": "pharmacokinetics",
+    "text": "What is the half-life of atorvastatin and which CYP enzymes metabolize it?",
+    "expected": {
+      "primary_agent": "pharmacokinetics",
+      "visual_type": "pk_curve",
+      "min_confidence": 0.7,
+      "must_contain_metabolism_enzyme": "CYP3A4"
+    }
+  },
+  {
+    "id": "e2e-en-05-comparison",
+    "language": "en",
+    "intent": "comparison",
+    "text": "Compare amoxicillin and azithromycin in terms of mechanism and side effects.",
+    "expected": {
+      "primary_agent": "comparison",
+      "visual_type": "comparison_table",
+      "min_rows": 2,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-ar-01-lookup",
+    "language": "ar",
+    "intent": "lookup",
+    "text": "ما هو دواء الإيبوبروفين ومتى يُستخدم؟",
+    "expected": {
+      "primary_agent": "lookup",
+      "visual_type": "card",
+      "min_citations": 1,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-ar-02-interaction",
+    "language": "ar",
+    "intent": "interaction",
+    "text": "هل من الآمن تناول الأسبرين والوارفارين معاً؟",
+    "expected": {
+      "primary_agent": "interaction",
+      "visual_type": "severity_bar",
+      "min_pairs": 1,
+      "min_confidence": 0.7,
+      "overall_severity_at_least": "moderate"
+    }
+  },
+  {
+    "id": "e2e-ar-03-dosage",
+    "language": "ar",
+    "intent": "dosage",
+    "text": "كم جرعة الميتفورمين المناسبة لمريض ٦٥ عاماً يعاني من قصور كلوي بسيط؟",
+    "expected": {
+      "primary_agent": "dosage",
+      "visual_type": "dosing_flowchart",
+      "min_regimens": 1,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-ar-04-alternative",
+    "language": "ar",
+    "intent": "alternative",
+    "text": "ما هي بدائل ليزينوبريل عند المريض الذي يعاني من سعال جاف؟",
+    "expected": {
+      "primary_agent": "alternative",
+      "visual_type": "card",
+      "min_candidates": 1,
+      "min_confidence": 0.7
+    }
+  },
+  {
+    "id": "e2e-ar-05-acquisition",
+    "language": "ar",
+    "intent": "acquisition",
+    "text": "هل دواء الإيبوبروفين متوفر بدون وصفة في مصر؟",
+    "expected": {
+      "primary_agent": "acquisition",
+      "visual_type": "card",
+      "min_confidence": 0.65
+    }
+  }
+]

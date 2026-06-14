@@ -16,6 +16,7 @@ from services.drug_service.routes.interactions import router as interactions_rou
 from services.drug_service.routes.lookup import router as lookup_router
 from services.drug_service.routes.pharmacokinetics import router as pk_router
 from services.drug_service.routes.query import router as query_router
+from services.drug_service.routes.ws_query import router as ws_query_router
 
 ALL_ROUTERS: list[APIRouter] = [
     health_router,
@@ -27,6 +28,7 @@ ALL_ROUTERS: list[APIRouter] = [
     alternatives_router,
     acquisition_router,
     query_router,
+    ws_query_router,
 ]
 
 __all__ = ["ALL_ROUTERS"]

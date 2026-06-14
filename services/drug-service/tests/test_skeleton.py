@@ -57,52 +57,58 @@ async def test_openapi_lists_every_agent_endpoint(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "path,payload",
+    "path,payload,agent_name",
     [
-        # /drugs/lookup is wired to the real LookupAgent from commit 4; in the
-        # test app we don't register it, so the route returns 503 instead of 501.
+        ("/drugs/lookup", {"drug": {"name": "ibuprofen"}, "language": "en"}, "lookup"),
         (
             "/drugs/interactions",
             {"drugs": [{"name": "ibuprofen"}, {"name": "warfarin"}], "language": "en"},
+            "interaction",
         ),
-        ("/drugs/dosage", {"drug": {"name": "metformin"}, "language": "en"}),
+        ("/drugs/dosage", {"drug": {"name": "metformin"}, "language": "en"}, "dosage"),
         (
             "/drugs/compare",
             {"drugs": [{"name": "amoxicillin"}, {"name": "azithromycin"}], "language": "en"},
+            "comparison",
         ),
-        ("/drugs/pharmacokinetics", {"drug": {"name": "atorvastatin"}, "language": "en"}),
+        (
+            "/drugs/pharmacokinetics",
+            {"drug": {"name": "atorvastatin"}, "language": "en"},
+            "pharmacokinetics",
+        ),
         (
             "/drugs/alternatives",
             {"drug": {"name": "lisinopril"}, "reason": "cough", "language": "en"},
+            "alternative",
         ),
         (
             "/drugs/acquisition",
             {"drug": {"name": "metformin"}, "country_iso": "EG", "language": "en"},
+            "acquisition",
         ),
-        ("/drugs/query", {"text": "what is ibuprofen", "language": "en"}),
     ],
 )
-async def test_agent_endpoints_return_501_stub(
-    client: AsyncClient, path: str, payload: dict
+async def test_agent_endpoints_return_503_when_unregistered(
+    client: AsyncClient, path: str, payload: dict, agent_name: str
 ) -> None:
-    """Each agent endpoint is a stub until its commit lands."""
+    """Every agent endpoint returns 503 with AGENT_NOT_REGISTERED until wiring
+    populates default_registry. Tests disable wiring so this is the expected state.
+    """
     resp = await client.post(path, json=payload)
-    assert resp.status_code == 501, f"{path} returned {resp.status_code}, expected 501"
+    assert resp.status_code == 503, f"{path} returned {resp.status_code}, expected 503"
     body = resp.json()
-    detail = body.get("detail", {})
-    assert detail.get("code") == "AGENT_NOT_IMPLEMENTED"
+    assert body.get("detail", {}).get("code") == "AGENT_NOT_REGISTERED"
 
 
 @pytest.mark.asyncio
-async def test_lookup_returns_503_when_agent_not_registered(client: AsyncClient) -> None:
-    """The lookup route is wired to default_registry; without a registered
-    LookupAgent (commit 12 wires it at startup) the route returns 503."""
-    resp = await client.post(
-        "/drugs/lookup", json={"drug": {"name": "ibuprofen"}, "language": "en"}
-    )
+async def test_query_endpoint_returns_503_when_orchestrator_not_wired(
+    client: AsyncClient,
+) -> None:
+    """The /drugs/query route reads orchestrator from app.state."""
+    resp = await client.post("/drugs/query", json={"text": "what is ibuprofen", "language": "en"})
     assert resp.status_code == 503
     body = resp.json()
-    assert body.get("detail", {}).get("code") == "AGENT_NOT_REGISTERED"
+    assert body.get("detail", {}).get("code") == "ORCHESTRATOR_NOT_WIRED"
 
 
 @pytest.mark.asyncio

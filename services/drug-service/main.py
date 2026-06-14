@@ -45,6 +45,8 @@ class DrugServiceConfig:
     database_url: str
     cors_origins: list[str]
     enable_metrics: bool
+    enable_agent_wiring: bool = True
+    """Set False in tests to skip startup wiring (no Qdrant/LLM calls)."""
 
     @classmethod
     def from_env(cls) -> DrugServiceConfig:
@@ -58,6 +60,7 @@ class DrugServiceConfig:
             ),
             cors_origins=[o.strip() for o in cors_raw.split(",")] if cors_raw != "*" else ["*"],
             enable_metrics=os.environ.get("ENABLE_METRICS", "true").lower() == "true",
+            enable_agent_wiring=os.environ.get("ENABLE_AGENT_WIRING", "true").lower() == "true",
         )
 
 
@@ -74,6 +77,16 @@ def create_app(config: DrugServiceConfig | None = None) -> FastAPI:
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         _log.info("drug_service.startup", app_env=cfg.app_env)
         setup_db(cfg.database_url)
+        if cfg.enable_agent_wiring:
+            from services.drug_service.wiring import (
+                WiringConfig,
+                wire_agents_and_orchestrator,
+            )
+
+            try:
+                await wire_agents_and_orchestrator(_app, WiringConfig.from_env())
+            except Exception as exc:
+                _log.exception("drug_service.wiring_failed_continuing_degraded", error=str(exc))
         yield
         _log.info("drug_service.shutdown")
 

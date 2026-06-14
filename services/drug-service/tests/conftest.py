@@ -58,6 +58,7 @@ def test_config() -> DrugServiceConfig:
         database_url="sqlite+aiosqlite:///:memory:",
         cors_origins=["*"],
         enable_metrics=False,
+        enable_agent_wiring=False,
     )
 
 

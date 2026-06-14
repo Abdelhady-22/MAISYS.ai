@@ -1,9 +1,4 @@
-"""Agent framework + concrete agents.
-
-The base class and registry come from ``base``. Concrete agents (one
-per commit 4-11) register themselves with ``default_registry`` at
-import time.
-"""
+"""Agent framework + concrete agents."""
 
 from services.drug_service.agents.base import (
     DOSAGE_DISCLAIMER,
@@ -16,17 +11,32 @@ from services.drug_service.agents.base import (
     BaseAgent,
     default_registry,
 )
+from services.drug_service.agents.comparison import ComparisonAgent
+from services.drug_service.agents.dosage import DosageAgent
+from services.drug_service.agents.interaction import InteractionAgent, WebSearchAgentLike
 from services.drug_service.agents.lookup import LookupAgent
+from services.drug_service.agents.single_drug_agents import (
+    AcquisitionAgent,
+    AlternativeAgent,
+    PharmacokineticsAgent,
+)
 
 __all__ = [
+    "AcquisitionAgent",
     "AgentContext",
     "AgentRegistry",
     "AgentResponse",
     "AgentRunResult",
+    "AlternativeAgent",
     "BaseAgent",
+    "ComparisonAgent",
     "DOSAGE_DISCLAIMER",
+    "DosageAgent",
     "GENERIC_DISCLAIMER",
     "INTERACTION_DISCLAIMER",
+    "InteractionAgent",
     "LookupAgent",
+    "PharmacokineticsAgent",
+    "WebSearchAgentLike",
     "default_registry",
 ]

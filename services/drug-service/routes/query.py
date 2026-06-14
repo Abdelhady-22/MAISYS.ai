@@ -1,33 +1,50 @@
-"""Query endpoint stub.
-
-Stub returning 501. The actual agent lands in commit 12.
-"""
+"""POST /drugs/query — free-text routed through the LangGraph orchestrator."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from services.drug_service.models.schemas import QueryRequest, QueryResponse
+from services.drug_service.orchestrator import DrugQueryOrchestrator
 from shared.auth import TokenPayload, get_current_user
+from shared.error_handler import APIResponse
+from shared.progress import ProgressPublisher
 
 router = APIRouter(prefix="/drugs", tags=["query"])
 
 
-@router.post("/query", response_model=QueryResponse)
+@router.post("/query", response_model=APIResponse[QueryResponse])
 async def query(
     request: QueryRequest,
+    http_request: Request,
     user: TokenPayload = Depends(get_current_user),
-) -> QueryResponse:
-    """Free-text query routed through the LangGraph orchestrator.
+) -> APIResponse[QueryResponse]:
+    """Free-text drug query routed through the orchestrator.
 
-    Not yet implemented — agent commit 12 supplies the
-    behaviour. This route exists so the OpenAPI surface is locked from
-    PR2 commit 1.
+    PR3: when ``request.job_id`` is set, progress events are published
+    to the ``progress:{job_id}`` Redis channel for WebSocket consumption.
+    The publisher is attached to ``app.state.progress_publisher`` at
+    startup (wiring.py); when absent, progress events are silently
+    dropped and the request still completes normally.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail={
-            "code": "AGENT_NOT_IMPLEMENTED",
-            "message": "query agent not yet implemented",
-        },
+    orchestrator: DrugQueryOrchestrator | None = getattr(
+        http_request.app.state, "orchestrator", None
     )
+    if orchestrator is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "ORCHESTRATOR_NOT_WIRED",
+                "message": "Query orchestrator is not yet wired (waiting on startup).",
+            },
+        )
+
+    publisher: ProgressPublisher | None = getattr(
+        http_request.app.state, "progress_publisher", None
+    )
+    response = await orchestrator.run(
+        request,
+        user_id=user.sub,
+        progress_publisher=publisher,
+    )
+    return APIResponse.ok(response)

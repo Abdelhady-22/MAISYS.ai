@@ -305,9 +305,23 @@ class AcquisitionResponse(BaseModel):
 # ─── Free-text query (LangGraph orchestrator) ─────────────────────
 
 
+VisualType = Literal[
+    "comparison_table",
+    "severity_bar",
+    "dosing_flowchart",
+    "pk_curve",
+    "card",  # generic fallback for lookup / alternative / acquisition
+]
+
+
 class QueryRequest(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
     language: Language = "en"
+    job_id: str | None = None
+    """Optional UUID-hex set by the client. When supplied, progress
+    events are published to ``progress:{job_id}`` and a WebSocket
+    client subscribed to that channel receives them in real time.
+    PR3-introduced; clients without WebSocket support omit this."""
 
 
 class QueryResponse(BaseModel):
@@ -317,6 +331,8 @@ class QueryResponse(BaseModel):
     main responder. ``data`` is that agent's data payload (a union of
     the per-agent ``*Data`` types). ``called_agents`` lists every
     agent that contributed to this response in execution order.
+    ``visual_type`` is a hint to the frontend about which
+    visualisation component best renders this response (PR3).
     """
 
     primary_agent: str
@@ -324,6 +340,7 @@ class QueryResponse(BaseModel):
     data: dict[str, Any]
     citations: list[Citation]
     meta: AgentMeta
+    visual_type: VisualType = "card"
 
 
 __all__ = [
@@ -362,4 +379,5 @@ __all__ = [
     "QueryRequest",
     "QueryResponse",
     "Severity",
+    "VisualType",
 ]
