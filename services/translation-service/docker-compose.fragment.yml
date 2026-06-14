@@ -1,0 +1,42 @@
+# translation-service entry for docker-compose.yml
+#
+# ADD this block under `services:` alongside safety-service / notification-service.
+
+  translation-service:
+    build:
+      context: .
+      dockerfile: services/translation-service/Dockerfile
+    container_name: maisys-translation-service
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+
+      # Cache — Redis 24h TTL per Part 1 §7.7
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/4}
+
+      # Translation modes — each optional. At least one must be configured.
+      # google: needs API key (Cloud Translation v2 REST)
+      GOOGLE_TRANSLATE_API_KEY: ${GOOGLE_TRANSLATE_API_KEY:-}
+      # local: deep-translator (no API key, included by default)
+      # llm: shared/llm_client (needs whatever provider key the LLMClient is configured for)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request, sys; r=urllib.request.urlopen('http://localhost:8007/readyz', timeout=3); sys.exit(0 if r.status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - maisys-net
