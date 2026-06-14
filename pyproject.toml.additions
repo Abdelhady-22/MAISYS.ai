@@ -1,0 +1,5 @@
+# Add to pyproject.toml's [tool.ruff.lint.per-file-ignores] section
+# (the sys.path setup before imports in test files is intentional)
+[tool.ruff.lint.per-file-ignores]
+"data-pipeline/tests/**/*.py" = ["E402"]
+"shared/tests/**/*.py" = ["E402"]
