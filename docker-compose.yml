@@ -106,22 +106,66 @@ services:
       retries: 5
 
   # ════════════════════════════════════════════════════════════════
-  # Service containers go below — added per service as they're built.
-  # Each service follows the pattern:
+  # auth-migrate — one-shot Alembic runner for auth-service
   #
-  # SERVICE-NAME:
-  #   build: ./services/SERVICE-NAME
-  #   environment:
-  #     - DATABASE_URL=postgresql+asyncpg://maisys:changeme@postgres:5432/SERVICE
-  #     - REDIS_URL=redis://redis:6379/0
-  #     - QDRANT_URL=http://qdrant:6333
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
-  #     redis: { condition: service_healthy }
-  #     qdrant: { condition: service_healthy }
-  #   ports:
-  #     - "${SERVICE_PORT}:${SERVICE_PORT}"
+  # Runs `alembic upgrade head` against the auth database, then exits.
+  # auth-service waits for this to complete before starting.
   # ════════════════════════════════════════════════════════════════
+  auth-migrate:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: maisys-auth-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-maisys}:${POSTGRES_PASSWORD:-changeme_local_only}@postgres:5432/auth
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  # ════════════════════════════════════════════════════════════════
+  # auth-service — authentication and authorisation
+  # ════════════════════════════════════════════════════════════════
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: maisys-auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-maisys}:${POSTGRES_PASSWORD:-changeme_local_only}@postgres:5432/auth
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-CHANGE-IN-STAGING-AND-PROD}
+      JWT_ISSUER: ${JWT_ISSUER:-maisys}
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      OTP_EXPIRE_MINUTES: ${OTP_EXPIRE_MINUTES:-10}
+      OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-3}
+      LOGIN_MAX_FAILED_ATTEMPTS: ${LOGIN_MAX_FAILED_ATTEMPTS:-5}
+      LOGIN_OTP_REQUIRED_ROLES: ${LOGIN_OTP_REQUIRED_ROLES:-admin,super_admin}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-100/minute}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      APPLE_OAUTH_CLIENT_ID: ${APPLE_OAUTH_CLIENT_ID:-}
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   postgres_data:
