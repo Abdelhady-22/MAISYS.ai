@@ -1,0 +1,37 @@
+# Don't ship test code, caches, or local dev artifacts in the image.
+# This file applies when the Docker build context is services/auth-service/;
+# the repo-root build context (the one our Dockerfile uses) needs a
+# matching entry in the repo-root .dockerignore — see DOCKER.md.
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Local virtualenvs and dev DBs
+.venv/
+venv/
+*.db
+*.db-journal
+dev_*.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+
+# Tests are NOT shipped — they're run in CI from the source tree.
+tests/
+
+# Docs / git metadata
+*.md
+.git/
+.gitignore

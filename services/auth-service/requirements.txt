@@ -1,0 +1,37 @@
+# auth-service runtime dependencies.
+#
+# Pinned to compatible-release ranges (~=) so security patches flow in
+# without breaking-change drift. Top-level pins only; transitive
+# dependencies are resolved by pip.
+
+# Web framework
+fastapi~=0.110
+uvicorn[standard]~=0.30
+
+# Database
+sqlalchemy[asyncio]~=2.0
+asyncpg~=0.29
+aiosqlite~=0.20
+
+# Migrations
+alembic~=1.13
+
+# Crypto / auth
+argon2-cffi~=23.1
+python-jose[cryptography]~=3.3
+
+# HTTP client (OAuth callbacks → Google/Apple JWKS)
+httpx~=0.27
+
+# Rate limiting + metrics
+slowapi~=0.1.9
+prometheus-fastapi-instrumentator~=7.0
+
+# Observability
+structlog~=24.1
+
+# Validation
+pydantic[email]~=2.6
+
+# Shared monorepo modules — installed via the local path import in CI.
+# Local development: PYTHONPATH=. ; production image: copied as a layer.
