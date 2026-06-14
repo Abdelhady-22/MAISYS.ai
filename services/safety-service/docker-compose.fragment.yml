@@ -1,0 +1,47 @@
+# safety-service entry for docker-compose.yml
+#
+# Per the PR2 brief: ADD this entry to the existing docker-compose.yml.
+# Do NOT modify any other service entries. Stateless service — depends
+# on Redis only when Stage 2 LLM confirmation is enabled (Redis caches
+# LLM responses via shared/llm_client). No Postgres dependency.
+#
+# Add this block under the `services:` mapping (alongside auth-service
+# and drug-service):
+
+  safety-service:
+    build:
+      context: .
+      dockerfile: services/safety-service/Dockerfile
+    container_name: maisys-safety-service
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+
+      # Stage 2 LLM confirmation (opt-in; disabled by default).
+      # Set SAFETY_LLM_CONFIRM_ENABLED=true to enable ambiguous-pattern
+      # promotion via a small fast LLM. Adds ~500-2000ms p95 latency.
+      SAFETY_LLM_CONFIRM_ENABLED: ${SAFETY_LLM_CONFIRM_ENABLED:-false}
+      SAFETY_STAGE_2_MODEL: ${SAFETY_STAGE_2_MODEL:-openai/gpt-4o-mini}
+      SAFETY_STAGE_2_TIMEOUT_SECONDS: ${SAFETY_STAGE_2_TIMEOUT_SECONDS:-5.0}
+
+      # Required when Stage 2 is enabled (shared/llm_client uses this
+      # for the cheap-model call + Redis cache lookup). Ignored when
+      # Stage 2 is disabled.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_CACHE_REDIS_URL: ${LLM_CACHE_REDIS_URL:-redis://redis:6379/3}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; r=urllib.request.urlopen('http://localhost:8008/readyz', timeout=3); sys.exit(0 if r.status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - maisys-net
